@@ -1,5 +1,7 @@
 #include "texas_code/client/messenger.h"
 
+#include <spdlog/spdlog.h>
+
 namespace texas_code {
 
 namespace client {
@@ -35,18 +37,23 @@ void Messenger::send_message(std::int32_t msg_type, const std::string& msg_body)
 }
 
 void Messenger::socket_sub_recv() {
-    get_service().post([this]{
+    new std::thread([this]{
         while (true) {
             zmq::message_t message;
             sub_socket_.recv(&message);
-            std::unique_ptr<RawMessage> response(new RawMessage(&message));
-            queue_.push_back(std::move(response));
+            auto* response = new RawMessage(&message);
+
+            get_service().post([this, response]{
+                queue_.push_back(std::unique_ptr<RawMessage>(response));
+                delete response;
+            });
         }
     });
 }
 
 void Messenger::socket_rpc_send_and_recv(RawMessage* raw_message) {
     get_service().post([this, raw_message]{
+        spdlog::get("console")->info("service inside {0}", raw_message->msg_type);
         zmq::message_t message = raw_message->pack_zmq_msg();
         rpc_socket_.send(message);
         delete raw_message;
@@ -58,57 +65,60 @@ void Messenger::socket_rpc_send_and_recv(RawMessage* raw_message) {
 }
 
 void Messenger::handle_recv_message() {
-    get_service().post([this]{
+    new std::thread([this]{
         while (true) {
-            if (queue_.empty()) continue;
+            get_service().post([this]{
+                if (queue_.empty()) return;
 
-            auto raw_message = std::move(queue_.front());
-            queue_.pop_front();
+                auto raw_message = std::move(queue_.front());
+                queue_.pop_front();
 
-            if (raw_message == nullptr) return;
+                if (raw_message == nullptr) return;
 
-            switch (static_cast<MessageType>(raw_message->msg_type)) {
-                case MessageType::UNKNOWN_REQUEST:
-                    return;
-                case MessageType::INQUIRE_ACTION_MESSAGE:
-                    dispatch<InquireActionMessage>(std::move(raw_message));
-                    break;
-                case MessageType::SEAT_INFO_MESSAGE:
-                    dispatch<SeatInfoMessage>(std::move(raw_message));
-                    break;
-                case MessageType::BLIND_MESSAGE:
-                    dispatch<BlindMessage>(std::move(raw_message));
-                    break;
-                case MessageType::FLOP_MESSAGE:
-                    dispatch<FlopMessage>(std::move(raw_message));
-                    break;
-                case MessageType::HOLD_CARDS_MESSAGE:
-                    dispatch<HoldCardsMessage>(std::move(raw_message));
-                    break;
-                case MessageType::TURN_MESSAGE:
-                    dispatch<TurnMessage>(std::move(raw_message));
-                    break;
-                case MessageType::RIVER_MESSAGE:
-                    dispatch<RiverMessage>(std::move(raw_message));
-                    break;
-                case MessageType::INQUIRE_SHOW_DOWN_MESSAGE:
-                    dispatch<InquireShowDownMessage>(std::move(raw_message));
-                    break;
-                case MessageType::SHOW_DOWN_MESSAGE:
-                    dispatch<ShowDownMessage>(std::move(raw_message));
-                    break;
-                case MessageType::SHOW_DOWN_RESPONSE:
-                    dispatch<ShowDownResponse>(std::move(raw_message));
-                    break;
-                case MessageType::POT_WIN_MESSAGE:
-                    dispatch<PotWinMessage>(std::move(raw_message));
-                    break;
-                case MessageType::CONNECT_RESPONSE:
-                    dispatch<ConnectResponse>(std::move(raw_message));
-                    break;
-                default:
-                    break;
-            }
+                switch (static_cast<MessageType>(raw_message->msg_type)) {
+                    case MessageType::UNKNOWN_REQUEST:
+                        return;
+                    case MessageType::INQUIRE_ACTION_MESSAGE:
+                        dispatch<InquireActionMessage>(std::move(raw_message));
+                        break;
+                    case MessageType::SEAT_INFO_MESSAGE:
+                        dispatch<SeatInfoMessage>(std::move(raw_message));
+                        break;
+                    case MessageType::BLIND_MESSAGE:
+                        dispatch<BlindMessage>(std::move(raw_message));
+                        break;
+                    case MessageType::FLOP_MESSAGE:
+                        dispatch<FlopMessage>(std::move(raw_message));
+                        break;
+                    case MessageType::HOLD_CARDS_MESSAGE:
+                        dispatch<HoldCardsMessage>(std::move(raw_message));
+                        break;
+                    case MessageType::TURN_MESSAGE:
+                        dispatch<TurnMessage>(std::move(raw_message));
+                        break;
+                    case MessageType::RIVER_MESSAGE:
+                        dispatch<RiverMessage>(std::move(raw_message));
+                        break;
+                    case MessageType::INQUIRE_SHOW_DOWN_MESSAGE:
+                        dispatch<InquireShowDownMessage>(std::move(raw_message));
+                        break;
+                    case MessageType::SHOW_DOWN_MESSAGE:
+                        dispatch<ShowDownMessage>(std::move(raw_message));
+                        break;
+                    case MessageType::SHOW_DOWN_RESPONSE:
+                        dispatch<ShowDownResponse>(std::move(raw_message));
+                        break;
+                    case MessageType::POT_WIN_MESSAGE:
+                        dispatch<PotWinMessage>(std::move(raw_message));
+                        break;
+                    case MessageType::CONNECT_RESPONSE:
+                        dispatch<ConnectResponse>(std::move(raw_message));
+                        break;
+                    default:
+                        break;
+                }
+            });
+            std::this_thread::sleep_for(std::chrono::nanoseconds(100));
         }
     });
 }

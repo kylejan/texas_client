@@ -1,5 +1,7 @@
 #include "texas_code/client/client.h"
 
+#include <chrono>
+
 #include <spdlog/spdlog.h>
 
 namespace texas_code {
@@ -12,11 +14,18 @@ Client::Client(const std::string& rpc_endpoint, const std::string& sub_endpoint)
 
 void Client::init() {
     Messenger::init();
+    Heartbeat request;
+    request.set_sequence_num(time(nullptr));
+    send_message(static_cast<std::int32_t>(MessageType::HEARTBEAT), request.SerializeAsString());
+
     get_service().post([this]{
-        Heartbeat request;
-        request.set_sequence_num(time(nullptr));
-        spdlog::get("console")->info(request.sequence_num());
-        send_message(static_cast<std::int32_t>(MessageType::HEARTBEAT), request.SerializeAsString());
+        while (true) {
+            Heartbeat request;
+            request.set_sequence_num(time(nullptr));
+            spdlog::get("console")->info(request.sequence_num());
+            send_message(static_cast<std::int32_t>(MessageType::HEARTBEAT), request.SerializeAsString());
+            std::this_thread::sleep_for(std::chrono::seconds(30));
+        }
     });
 }
 
