@@ -30,8 +30,8 @@ boost::asio::io_service& Messenger::get_service() {
 }
 
 void Messenger::send_message(std::int32_t msg_type, const std::string& msg_body) {
-    std::unique_ptr<RawMessage> raw_message(new RawMessage(msg_type, msg_body));
-    socket_rpc_send_and_recv(std::move(raw_message));
+    auto* raw_message = new RawMessage(msg_type, msg_body);
+    socket_rpc_send_and_recv(raw_message);
 }
 
 void Messenger::socket_sub_recv() {
@@ -45,11 +45,11 @@ void Messenger::socket_sub_recv() {
     });
 }
 
-void Messenger::socket_rpc_send_and_recv(std::unique_ptr<RawMessage> raw_message) {
-    zmq::message_t message = raw_message->pack_zmq_msg();
-
-    get_service().post([this, &message]{
+void Messenger::socket_rpc_send_and_recv(RawMessage* raw_message) {
+    get_service().post([this, raw_message]{
+        zmq::message_t message = raw_message->pack_zmq_msg();
         rpc_socket_.send(message);
+        delete raw_message;
         zmq::message_t reply;
         rpc_socket_.recv(&reply);
         std::unique_ptr<RawMessage> response(new RawMessage(&message));

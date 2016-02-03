@@ -53,7 +53,7 @@ private:
         dispatch_message(std::move(message));
     }
 
-    void socket_rpc_send_and_recv(std::unique_ptr<RawMessage>);
+    void socket_rpc_send_and_recv(RawMessage*);
     void socket_sub_recv();
     void handle_recv_message();
 
