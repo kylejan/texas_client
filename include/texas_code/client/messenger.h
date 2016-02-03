@@ -27,7 +27,7 @@ public:
     Messenger& operator = (const Messenger&) = delete;
     Messenger& operator = (Messenger&&) = delete;
 
-    inline boost::asio::io_service& get_service();
+    boost::asio::io_service& get_service();
     void send_message(std::int32_t, const std::string&);
 
     virtual void init();
