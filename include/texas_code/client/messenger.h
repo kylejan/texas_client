@@ -7,8 +7,9 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
-#include <condition_variable>
+#include <deque>
 #include <string>
+#include <condition_variable>
 
 #include <boost/asio/io_service.hpp>
 
@@ -27,8 +28,7 @@ public:
     Messenger& operator = (Messenger&&) = delete;
 
     inline boost::asio::io_service& get_service();
-    std::unique_ptr<RawMessage> send_and_recv(std::int32_t, const std::string&);
-    std::unique_ptr<RawMessage> socket_sub_recv();
+    void send_message(std::int32_t, const std::string&);
 
     virtual void init();
     virtual void run();
@@ -53,8 +53,9 @@ private:
         dispatch_message(std::move(message));
     }
 
-    std::unique_ptr<RawMessage> socket_rpc_send_and_recv(std::unique_ptr<RawMessage>);
-    void handle_recv_message(std::unique_ptr<RawMessage>);
+    void socket_rpc_send_and_recv(std::unique_ptr<RawMessage>);
+    void socket_sub_recv();
+    void handle_recv_message();
 
     zmq::context_t context_;
     zmq::socket_t rpc_socket_;
@@ -63,6 +64,7 @@ private:
     std::string rpc_endpoint_;
     std::string sub_endpoint_;
 
+    std::deque<std::unique_ptr<RawMessage>> queue_;
     boost::asio::io_service io_service_;
     boost::asio::io_service::work work_;
 };
