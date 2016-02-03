@@ -58,7 +58,9 @@ void Messenger::socket_rpc_send_and_recv(std::unique_ptr<RawMessage> raw_message
 
 void Messenger::handle_recv_message() {
 
-    while (!queue_.empty()) {
+    while (true) {
+        if (queue_.empty()) continue;
+
         auto raw_message = std::move(queue_.front());
         queue_.pop_front();
 
