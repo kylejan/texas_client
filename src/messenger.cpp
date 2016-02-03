@@ -18,6 +18,7 @@ Messenger::Messenger(const std::string& rpc_endpoint, const std::string& sub_end
 
 void Messenger::init() {
     socket_sub_recv();
+    handle_recv_message();
 }
 
 void Messenger::run() {
@@ -57,58 +58,59 @@ void Messenger::socket_rpc_send_and_recv(std::unique_ptr<RawMessage> raw_message
 }
 
 void Messenger::handle_recv_message() {
+    get_service().post([this]{
+        while (true) {
+            if (queue_.empty()) continue;
 
-    while (true) {
-        if (queue_.empty()) continue;
+            auto raw_message = std::move(queue_.front());
+            queue_.pop_front();
 
-        auto raw_message = std::move(queue_.front());
-        queue_.pop_front();
+            if (raw_message == nullptr) return;
 
-        if (raw_message == nullptr) return;
-
-        switch (static_cast<MessageType>(raw_message->msg_type)) {
-            case MessageType::UNKNOWN_REQUEST:
-                return;
-            case MessageType::INQUIRE_ACTION_MESSAGE:
-                dispatch<InquireActionMessage>(std::move(raw_message));
-                break;
-            case MessageType::SEAT_INFO_MESSAGE:
-                dispatch<SeatInfoMessage>(std::move(raw_message));
-                break;
-            case MessageType::BLIND_MESSAGE:
-                dispatch<BlindMessage>(std::move(raw_message));
-                break;
-            case MessageType::FLOP_MESSAGE:
-                dispatch<FlopMessage>(std::move(raw_message));
-                break;
-            case MessageType::HOLD_CARDS_MESSAGE:
-                dispatch<HoldCardsMessage>(std::move(raw_message));
-                break;
-            case MessageType::TURN_MESSAGE:
-                dispatch<TurnMessage>(std::move(raw_message));
-                break;
-            case MessageType::RIVER_MESSAGE:
-                dispatch<RiverMessage>(std::move(raw_message));
-                break;
-            case MessageType::INQUIRE_SHOW_DOWN_MESSAGE:
-                dispatch<InquireShowDownMessage>(std::move(raw_message));
-                break;
-            case MessageType::SHOW_DOWN_MESSAGE:
-                dispatch<ShowDownMessage>(std::move(raw_message));
-                break;
-            case MessageType::SHOW_DOWN_RESPONSE:
-                dispatch<ShowDownResponse>(std::move(raw_message));
-                break;
-            case MessageType::POT_WIN_MESSAGE:
-                dispatch<PotWinMessage>(std::move(raw_message));
-                break;
-            case MessageType::CONNECT_RESPONSE:
-                dispatch<ConnectResponse>(std::move(raw_message));
-                break;
-            default:
-                break;
+            switch (static_cast<MessageType>(raw_message->msg_type)) {
+                case MessageType::UNKNOWN_REQUEST:
+                    return;
+                case MessageType::INQUIRE_ACTION_MESSAGE:
+                    dispatch<InquireActionMessage>(std::move(raw_message));
+                    break;
+                case MessageType::SEAT_INFO_MESSAGE:
+                    dispatch<SeatInfoMessage>(std::move(raw_message));
+                    break;
+                case MessageType::BLIND_MESSAGE:
+                    dispatch<BlindMessage>(std::move(raw_message));
+                    break;
+                case MessageType::FLOP_MESSAGE:
+                    dispatch<FlopMessage>(std::move(raw_message));
+                    break;
+                case MessageType::HOLD_CARDS_MESSAGE:
+                    dispatch<HoldCardsMessage>(std::move(raw_message));
+                    break;
+                case MessageType::TURN_MESSAGE:
+                    dispatch<TurnMessage>(std::move(raw_message));
+                    break;
+                case MessageType::RIVER_MESSAGE:
+                    dispatch<RiverMessage>(std::move(raw_message));
+                    break;
+                case MessageType::INQUIRE_SHOW_DOWN_MESSAGE:
+                    dispatch<InquireShowDownMessage>(std::move(raw_message));
+                    break;
+                case MessageType::SHOW_DOWN_MESSAGE:
+                    dispatch<ShowDownMessage>(std::move(raw_message));
+                    break;
+                case MessageType::SHOW_DOWN_RESPONSE:
+                    dispatch<ShowDownResponse>(std::move(raw_message));
+                    break;
+                case MessageType::POT_WIN_MESSAGE:
+                    dispatch<PotWinMessage>(std::move(raw_message));
+                    break;
+                case MessageType::CONNECT_RESPONSE:
+                    dispatch<ConnectResponse>(std::move(raw_message));
+                    break;
+                default:
+                    break;
+            }
         }
-    }
+    });
 }
 
 } // namespace client
