@@ -18,7 +18,6 @@ void Client::init() {
         while (true) {
             Heartbeat request;
             request.set_sequence_num(time(nullptr));
-            spdlog::get("console")->info(request.sequence_num());
             send_message(static_cast<std::int32_t>(MessageType::HEARTBEAT), request.SerializeAsString());
             std::this_thread::sleep_for(std::chrono::seconds(30));
         }

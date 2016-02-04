@@ -22,6 +22,7 @@ struct RawMessage {
         size_t body_size = msg->size() - sizeof(msg_type);
         char buffer[body_size + 1];
         memcpy(buffer, (char*)msg->data() + sizeof(msg_type), body_size);
+        msg_body = std::string(buffer, body_size);
     }
 
     zmq::message_t pack_zmq_msg() {

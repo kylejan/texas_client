@@ -15,7 +15,7 @@ Messenger::Messenger(const std::string& rpc_endpoint, const std::string& sub_end
     , work_(io_service_) {
 
     rpc_socket_.connect(rpc_endpoint_);
-    sub_socket_.connect(sub_endpoint);
+    sub_socket_.connect(sub_endpoint_);
 }
 
 void Messenger::init() {
@@ -52,14 +52,15 @@ void Messenger::socket_sub_recv() {
 }
 
 void Messenger::socket_rpc_send_and_recv(RawMessage* raw_message) {
-    get_service().post([this, raw_message]{
-        spdlog::get("console")->info("service inside {0}", raw_message->msg_type);
-        zmq::message_t message = raw_message->pack_zmq_msg();
-        rpc_socket_.send(message);
-        delete raw_message;
+    spdlog::get("console")->info("send message {0}", raw_message->msg_type);
+    zmq::message_t message = raw_message->pack_zmq_msg();
+    rpc_socket_.send(message);
+    delete raw_message;
+
+    get_service().post([this]{
         zmq::message_t reply;
         rpc_socket_.recv(&reply);
-        std::unique_ptr<RawMessage> response(new RawMessage(&message));
+        std::unique_ptr<RawMessage> response(new RawMessage(&reply));
         queue_.push_back(std::move(response));
     });
 }
