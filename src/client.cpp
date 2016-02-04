@@ -18,8 +18,8 @@ void Client::init() {
         while (true) {
             Heartbeat request;
             request.set_sequence_num(time(nullptr));
-            send_message(static_cast<std::int32_t>(MessageType::HEARTBEAT), request.SerializeAsString());
-            std::this_thread::sleep_for(std::chrono::seconds(30));
+            send_message(MessageType::HEARTBEAT, request);
+            std::this_thread::sleep_for(std::chrono::seconds(10));
         }
     });
 }

@@ -31,8 +31,10 @@ boost::asio::io_service& Messenger::get_service() {
     return io_service_;
 }
 
-void Messenger::send_message(std::int32_t msg_type, const std::string& msg_body) {
-    auto* raw_message = new RawMessage(msg_type, msg_body);
+void Messenger::send_message(MessageType msg_type, const ::google::protobuf::Message& message) {
+    auto type = static_cast<std::int32_t>(msg_type);
+    spdlog::get("console")->info("send message {0}\n{1}", type, message.Utf8DebugString());
+    auto* raw_message = new RawMessage(type, message.SerializeAsString());
     socket_rpc_send_and_recv(raw_message);
 }
 
@@ -53,7 +55,6 @@ void Messenger::socket_sub_recv() {
 
 void Messenger::socket_rpc_send_and_recv(RawMessage* raw_message) {
     get_service().post([this, raw_message]{
-        spdlog::get("console")->info("send message {0}", raw_message->msg_type);
         zmq::message_t message = raw_message->pack_zmq_msg();
         rpc_socket_.send(message);
         delete raw_message;

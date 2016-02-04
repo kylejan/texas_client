@@ -11,6 +11,7 @@
 #include <string>
 #include <condition_variable>
 
+#include <spdlog/spdlog.h>
 #include <boost/asio/io_service.hpp>
 
 namespace texas_code {
@@ -28,7 +29,7 @@ public:
     Messenger& operator = (Messenger&&) = delete;
 
     boost::asio::io_service& get_service();
-    void send_message(std::int32_t, const std::string&);
+    void send_message(MessageType, const ::google::protobuf::Message&);
 
     virtual void init();
     virtual void run();
@@ -50,6 +51,7 @@ private:
     void dispatch(std::unique_ptr<RawMessage> raw_message) {
         std::unique_ptr<type> message(new type());
         message->ParseFromString(raw_message->msg_body);
+        spdlog::get("console")->info("receive message {0}\n{1}", raw_message->msg_type, message->Utf8DebugString());
         dispatch_message(std::move(message));
     }
 
