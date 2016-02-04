@@ -52,12 +52,11 @@ void Messenger::socket_sub_recv() {
 }
 
 void Messenger::socket_rpc_send_and_recv(RawMessage* raw_message) {
-    spdlog::get("console")->info("send message {0}", raw_message->msg_type);
-    zmq::message_t message = raw_message->pack_zmq_msg();
-    rpc_socket_.send(message);
-    delete raw_message;
-
-    get_service().post([this]{
+    get_service().post([this, raw_message]{
+        spdlog::get("console")->info("send message {0}", raw_message->msg_type);
+        zmq::message_t message = raw_message->pack_zmq_msg();
+        rpc_socket_.send(message);
+        delete raw_message;
         zmq::message_t reply;
         rpc_socket_.recv(&reply);
         std::unique_ptr<RawMessage> response(new RawMessage(&reply));
